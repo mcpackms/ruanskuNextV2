@@ -161,9 +161,21 @@ export default function MainScreen({user, onLogout}: Props) {
         ]}>
         <View style={styles.tabBarShadow}>
           <View style={styles.tabBarBackground} onLayout={handleContainerLayout}>
-            <View style={styles.tabBarContent} {...panResponder.panHandlers}>
-              <BlurView blurType="light" blurAmount={30} style={styles.blurContainer}>
-                {/* 滑动指示器 (底层) */}
+            <View style={styles.tabBarContent}>
+              {/* 毛玻璃背景 - 纯装饰，不处理触摸 */}
+              <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <BlurView
+                  blurType="light"
+                  blurAmount={30}
+                  style={{flex: 1}}
+                >
+                  <View style={{flex: 1}} />
+                </BlurView>
+              </View>
+
+              {/* 触摸处理层 */}
+              <View style={styles.tabBarTouchArea} {...panResponder.panHandlers}>
+                {/* 滑动指示器 (最底层) */}
                 {containerWidth > 0 && (
                   <Animated.View
                     style={[
@@ -177,18 +189,20 @@ export default function MainScreen({user, onLogout}: Props) {
                 )}
 
                 {/* 标签文字 (上层) */}
-                {TABS.map((tab) => (
-                  <View key={tab.key} style={styles.tabItem}>
-                    <Text
-                      style={[
-                        styles.tabText,
-                        activeTab === tab.key && styles.tabTextActive,
-                      ]}>
-                      {tab.label}
-                    </Text>
-                  </View>
-                ))}
-              </BlurView>
+                <View style={styles.tabTextLayer}>
+                  {TABS.map((tab) => (
+                    <View key={tab.key} style={styles.tabItem}>
+                      <Text
+                        style={[
+                          styles.tabText,
+                          activeTab === tab.key && styles.tabTextActive,
+                        ]}>
+                        {tab.label}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
             </View>
           </View>
         </View>
@@ -248,14 +262,20 @@ const styles = StyleSheet.create({
     borderRadius: 28,
   },
 
-  /* 毛玻璃容器 */
-  blurContainer: {
+  /* 触摸处理层 */
+  tabBarTouchArea: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: SLIDER_PADDING,
-    borderRadius: 28,
     minHeight: 60,
+  },
+
+  /* 文字层容器 */
+  tabTextLayer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   /* 活跃指示器 - 透明+边框 */

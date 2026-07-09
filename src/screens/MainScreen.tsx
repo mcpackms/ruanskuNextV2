@@ -31,8 +31,8 @@ const TABS: {key: Tab; label: string}[] = [
   {key: 'profile', label: '我的'},
 ];
 const TAB_COUNT = TABS.length;
-const BAR_H_MARGIN = 16;
-const SLIDER_H_MARGIN = 6;
+const BAR_H_MARGIN = 12;
+const SLIDER_H_MARGIN = 8;
 
 export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
@@ -149,10 +149,10 @@ export default function MainScreen({user, onLogout}: Props) {
       <View style={styles.content}>{renderScreen()}</View>
 
       {/* 底部悬浮导航栏 */}
-      <View style={[styles.barArea, {paddingBottom: insets.bottom + 6}]}>
-        <View style={styles.barShadow}>
-          <View style={styles.barInner} onLayout={onLayout} {...pan.panHandlers}>
-            <BlurView blurType="light" blurAmount={32} style={styles.blur}>
+      <View style={[styles.barArea, {paddingBottom: insets.bottom + 12}]}>
+        <View style={styles.barShadow} onLayout={onLayout}>
+          <View style={styles.barInner} {...pan.panHandlers}>
+            <BlurView blurType="light" blurAmount={24} style={styles.blur}>
               {barWidth > 0 && (
                 <Animated.View
                   style={[
@@ -204,16 +204,16 @@ const styles = StyleSheet.create({
   barShadow: {
     marginHorizontal: BAR_H_MARGIN,
     borderRadius: 28,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: {width: 0, height: 6},
-        shadowOpacity: 0.2,
-        shadowRadius: 24,
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
       },
       android: {
-        elevation: 16,
+        elevation: 12,
       },
     }),
   },
@@ -248,13 +248,13 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   tabLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.6)',
   },
   tabLabelActive: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
 });

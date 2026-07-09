@@ -72,8 +72,9 @@ export default function MainScreen({user, onLogout}: Props) {
       Animated.spring(slideAnim, {
         toValue: index * segmentWidthRef.current,
         useNativeDriver: true,
-        tension: 80,
-        friction: 12,
+        tension: 25,
+        friction: 20,
+        mass: 1.5,
       }).start();
     },
     [slideAnim],

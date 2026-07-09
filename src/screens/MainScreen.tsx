@@ -35,8 +35,8 @@ const TABS: {key: Tab; label: string; icon: string}[] = [
 
 const TAB_COUNT = TABS.length;
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const BAR_HORIZONTAL_MARGIN = 20;
-const SLIDER_PADDING = 10;
+const BAR_HORIZONTAL_MARGIN = 4;
+const SLIDER_PADDING = 14;
 
 export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
@@ -237,58 +237,58 @@ const styles = StyleSheet.create({
   /* 阴影层 */
   tabBarShadow: {
     marginHorizontal: BAR_HORIZONTAL_MARGIN,
-    borderRadius: 26,
+    borderRadius: 28,
     backgroundColor: 'rgba(255,255,255,0.95)',
     ...Platform.select({
       ios: {
         shadowColor: '#000000',
         shadowOffset: {width: 0, height: 8},
-        shadowOpacity: 0.12,
-        shadowRadius: 24,
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
       },
       android: {
-        elevation: 16,
+        elevation: 14,
       },
     }),
   },
 
   /* 背景层 */
   tabBarBackground: {
-    borderRadius: 26,
+    borderRadius: 28,
     overflow: 'hidden',
   },
 
   /* 内容层 */
   tabBarContent: {
-    borderRadius: 26,
+    borderRadius: 28,
   },
 
   /* 毛玻璃容器 */
   blurContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: SLIDER_PADDING,
-    borderRadius: 26,
+    borderRadius: 28,
   },
 
   /* 活跃指示器 */
   activeIndicator: {
     position: 'absolute',
     left: SLIDER_PADDING,
-    top: 5,
-    bottom: 5,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    top: 6,
+    bottom: 6,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.5)',
     ...Platform.select({
       ios: {
         shadowColor: '#000000',
         shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
       },
       android: {
-        elevation: 4,
+        elevation: 5,
       },
     }),
   },

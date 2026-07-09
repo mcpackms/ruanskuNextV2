@@ -2,13 +2,11 @@ import React, {useState, useCallback, useEffect} from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   Alert,
   ScrollView,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {launchImageLibrary} from 'react-native-image-picker';
@@ -22,8 +20,6 @@ interface Props {
 export default function SettingsScreen({onBack, onBackgroundChange}: Props) {
   const insets = useSafeAreaInsets();
   const [bgUri, setBgUri] = useState<string | null>(null);
-  const [inputUrl, setInputUrl] = useState('');
-  const [loading, setLoading] = useState(false);
 
   // 加载已保存的背景
   useEffect(() => {
@@ -47,28 +43,11 @@ export default function SettingsScreen({onBack, onBackgroundChange}: Props) {
 
     const uri = result.assets?.[0]?.uri;
     if (uri) {
-      setLoading(true);
       await saveBackgroundUri(uri);
       setBgUri(uri);
       onBackgroundChange(uri);
-      setLoading(false);
     }
   }, [onBackgroundChange]);
-
-  // 使用 URL 作为背景
-  const handleApplyUrl = useCallback(async () => {
-    const url = inputUrl.trim();
-    if (!url) {
-      Alert.alert('提示', '请输入图片链接');
-      return;
-    }
-
-    setLoading(true);
-    await saveBackgroundUri(url);
-    setBgUri(url);
-    onBackgroundChange(url);
-    setLoading(false);
-  }, [inputUrl, onBackgroundChange]);
 
   // 清除背景
   const handleClear = useCallback(() => {
@@ -137,34 +116,6 @@ export default function SettingsScreen({onBack, onBackgroundChange}: Props) {
         </View>
       </Pressable>
 
-      {/* 输入图片链接 */}
-      <View style={styles.urlCard}>
-        <Text style={styles.sectionTitle}>图片链接</Text>
-        <TextInput
-          style={styles.urlInput}
-          placeholder="输入图片 URL"
-          placeholderTextColor="#999"
-          value={inputUrl}
-          onChangeText={setInputUrl}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-        />
-        <Pressable
-          style={({pressed}) => [
-            styles.applyButton,
-            pressed && styles.applyButtonPressed,
-            loading && styles.applyButtonDisabled,
-          ]}
-          onPress={handleApplyUrl}
-          disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.applyButtonText}>应用</Text>
-          )}
-        </Pressable>
-      </View>
     </ScrollView>
   );
 }
@@ -299,43 +250,5 @@ const styles = StyleSheet.create({
   },
 
   /* URL 输入 */
-  urlCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  urlInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#222',
-    marginBottom: 12,
-  },
-  applyButton: {
-    backgroundColor: '#4A90D9',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  applyButtonPressed: {
-    backgroundColor: '#357ABD',
-  },
-  applyButtonDisabled: {
-    backgroundColor: '#a0c4e8',
-  },
-  applyButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+
 });

@@ -193,19 +193,15 @@ export default function MainScreen({user, onLogout}: Props) {
         )}
       </View>
 
-      {/* ========== 底部凸玻璃导航栏 ========== */}
-      <View
-        style={[
-          styles.tabBarWrapper,
-          {paddingBottom: insets.bottom + 4},
-        ]}>
-        <View onLayout={handleLayout}>
+      {/* ========== 底部悬浮凸玻璃导航栏 ========== */}
+      <View style={[styles.tabBarArea, {paddingBottom: insets.bottom + 8}]}>
+        <View style={styles.tabBarFloat} onLayout={handleLayout}>
           <LiquidGlassView
             glassType="regular"
             glassTintColor="#FFFFFF"
-            glassOpacity={0.85}
+            glassOpacity={0.8}
             style={styles.tabBar}>
-            {/* 可拖拽滑块 */}
+            {/* 可拖拽磨砂滑块 */}
             {tabBarWidth > 0 && (
               <Animated.View
                 style={[
@@ -251,25 +247,35 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    paddingBottom: 80, // 给悬浮导航栏留空间
   },
   bgImage: {
     flex: 1,
   },
 
-  /* ---------- 凸玻璃容器（阴影层） ---------- */
-  tabBarWrapper: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  /* ---------- 悬浮导航栏容器 ---------- */
+  tabBarArea: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+  },
+
+  /* ---------- 悬浮凸玻璃导航栏 ---------- */
+  tabBarFloat: {
+    marginHorizontal: 16,
+    borderRadius: 24,
     overflow: 'visible',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: {width: 0, height: -4},
-        shadowOpacity: 0.15,
-        shadowRadius: 16,
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
       },
       android: {
-        elevation: 16,
+        elevation: 20,
       },
     }),
   },
@@ -279,28 +285,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 8,
+    paddingVertical: 4,
     paddingHorizontal: SLIDER_H_MARGIN,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 24,
   },
 
-  /* ---------- 滑块 ---------- */
+  /* ---------- 滑块（磨砂效果） ---------- */
   slider: {
     position: 'absolute',
     left: SLIDER_H_MARGIN,
-    height: 34,
-    top: 4,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    height: 36,
+    top: 6,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.35)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.15,
-        shadowRadius: 6,
+        shadowOffset: {width: 0, height: 1},
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 4,
+        elevation: 2,
       },
     }),
   },

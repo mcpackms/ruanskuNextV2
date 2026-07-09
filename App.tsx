@@ -1,38 +1,38 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
+ * ruanskyNextV2 - RTK 论坛客户端
  */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import React, {useState, useCallback} from 'react';
+import {StatusBar, StyleSheet, useColorScheme, View} from 'react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 
-function App() {
+import LoginScreen from './src/screens/LoginScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import type {UserInfo} from './src/types';
+
+function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const [user, setUser] = useState<UserInfo | null>(null);
+
+  const handleLoginSuccess = useCallback((userInfo: UserInfo) => {
+    setUser(userInfo);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setUser(null);
+  }, []);
 
   return (
     <SafeAreaProvider>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <View style={styles.container}>
+        {user ? (
+          <ProfileScreen user={user} onLogout={handleLogout} />
+        ) : (
+          <LoginScreen onLoginSuccess={handleLoginSuccess} />
+        )}
+      </View>
     </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
   );
 }
 

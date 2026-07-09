@@ -132,7 +132,6 @@ export default function MainScreen({user, onLogout}: Props) {
       return (
         <SettingsScreen
           onBack={() => setShowSettings(false)}
-          onBackgroundChange={setBgUri}
         />
       );
     }
@@ -271,7 +270,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.8)',
+    borderColor: 'rgba(0,0,0,0.15)',
     ...Platform.select({
       ios: {
         shadowColor: '#000000',
@@ -309,10 +308,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 16,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(0,0,0,0.45)',
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 17,
     fontWeight: '700',
   },

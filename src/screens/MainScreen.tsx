@@ -2,7 +2,6 @@ import React, {useState, useCallback, useRef, useEffect} from 'react';
 import {
   View,
   Text,
-  Pressable,
   StyleSheet,
   Animated,
   PanResponder,
@@ -51,10 +50,10 @@ export default function MainScreen({user, onLogout}: Props) {
   const sectionWidth = tabBarWidth / TAB_COUNT;
   const sliderWidth = tabBarWidth > 0 ? sectionWidth - SLIDER_H_MARGIN * 2 : 0;
 
-  // 动画值：滑块 translateX（相对最左位置）
+  // 动画值：滑块 translateX
   const sliderTranslateX = useRef(new Animated.Value(0)).current;
 
-  // 追踪当前滑块位置（给 PanResponder 用）
+  // 追踪当前滑块位置
   const sliderValueRef = useRef(0);
   useEffect(() => {
     const listener = sliderTranslateX.addListener(({value}) => {
@@ -63,18 +62,25 @@ export default function MainScreen({user, onLogout}: Props) {
     return () => sliderTranslateX.removeListener(listener);
   }, [sliderTranslateX]);
 
-  // 用 ref 保存 sectionWidth，避免 PanResponder 闭包过期
+  // 用 ref 保存 sectionWidth
   const sectionWidthRef = useRef(0);
   useEffect(() => {
     sectionWidthRef.current = sectionWidth;
   }, [sectionWidth]);
 
-  // 拖拽手势
+  // 触摸起始位置（用于区分点击/拖拽）
+  const touchStartXRef = useRef(0);
+
+  // 拖拽+点击统一手势（放在整个导航栏上）
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {},
+
+      onPanResponderGrant: evt => {
+        touchStartXRef.current = evt.nativeEvent.locationX;
+      },
+
       onPanResponderMove: (_, gesture) => {
         const sw = sectionWidthRef.current || 1;
         const maxTranslate = (TAB_COUNT - 1) * sw;
@@ -84,19 +90,38 @@ export default function MainScreen({user, onLogout}: Props) {
         );
         sliderTranslateX.setValue(newValue);
       },
-      onPanResponderRelease: (_, gesture) => {
-        const sw = sectionWidthRef.current || 1;
-        const finalX = Math.max(
-          0,
-          Math.min(
-            (TAB_COUNT - 1) * sw,
-            sliderValueRef.current + gesture.dx,
-          ),
-        );
-        const tabIndex = Math.round(finalX / sw);
-        const targetTab = TAB_CONFIG[tabIndex].key;
 
+      onPanResponderRelease: (evt, gesture) => {
+        const sw = sectionWidthRef.current || 1;
+
+        // 判断是点击还是拖拽
+        const isTap = Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5;
+
+        let tabIndex: number;
+
+        if (isTap) {
+          // 点击：根据触摸位置计算
+          tabIndex = Math.floor(
+            Math.min(
+              TAB_COUNT - 1,
+              Math.max(0, touchStartXRef.current / sw),
+            ),
+          );
+        } else {
+          // 拖拽：根据滑块最终位置计算
+          const finalX = Math.max(
+            0,
+            Math.min(
+              (TAB_COUNT - 1) * sw,
+              sliderValueRef.current + gesture.dx,
+            ),
+          );
+          tabIndex = Math.round(finalX / sw);
+        }
+
+        const targetTab = TAB_CONFIG[tabIndex].key;
         setActiveTab(targetTab);
+        setShowSettings(false);
 
         Animated.spring(sliderTranslateX, {
           toValue: tabIndex * sw,
@@ -108,23 +133,6 @@ export default function MainScreen({user, onLogout}: Props) {
     }),
   ).current;
 
-  // 点击标签切换（带动画）
-  const switchToTab = useCallback(
-    (tabKey: Tab) => {
-      setActiveTab(tabKey);
-      setShowSettings(false); // 切换标签时关闭设置页
-      const tabIndex = TAB_CONFIG.findIndex(t => t.key === tabKey);
-      const sw = sectionWidthRef.current || 1;
-      Animated.spring(sliderTranslateX, {
-        toValue: tabIndex * sw,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 12,
-      }).start();
-    },
-    [sliderTranslateX],
-  );
-
   const handleLogout = useCallback(() => {
     onLogout();
   }, [onLogout]);
@@ -135,13 +143,6 @@ export default function MainScreen({user, onLogout}: Props) {
       setTabBarWidth(width);
     }
   }, []);
-
-  const handleTabPress = useCallback(
-    (tabKey: Tab) => {
-      switchToTab(tabKey);
-    },
-    [switchToTab],
-  );
 
   const handleOpenSettings = useCallback(() => {
     setShowSettings(true);
@@ -155,7 +156,6 @@ export default function MainScreen({user, onLogout}: Props) {
     setBgUri(uri);
   }, []);
 
-  // 渲染 "我的" 标签下的内容
   const renderProfileContent = () => {
     if (showSettings) {
       return (
@@ -176,10 +176,13 @@ export default function MainScreen({user, onLogout}: Props) {
 
   return (
     <View style={styles.container}>
-      {/* 内容区域（带自定义背景） */}
+      {/* 内容区域 */}
       <View style={styles.content}>
         {bgUri ? (
-          <ImageBackground source={{uri: bgUri}} style={styles.bgImage} resizeMode="cover">
+          <ImageBackground
+            source={{uri: bgUri}}
+            style={styles.bgImage}
+            resizeMode="cover">
             {activeTab === 'community' && <CommunityScreen />}
             {activeTab === 'family' && <FamilyScreen />}
             {activeTab === 'profile' && renderProfileContent()}
@@ -194,14 +197,16 @@ export default function MainScreen({user, onLogout}: Props) {
       </View>
 
       {/* ========== 底部悬浮凸玻璃导航栏 ========== */}
-      <View style={[styles.tabBarArea, {paddingBottom: insets.bottom + 8}]}>
+      <View
+        style={[styles.tabBarArea, {paddingBottom: insets.bottom + 8}]}
+        {...panResponder.panHandlers}>
         <View style={styles.tabBarFloat} onLayout={handleLayout}>
           <LiquidGlassView
             glassType="regular"
             glassTintColor="#FFFFFF"
             glassOpacity={0.8}
             style={styles.tabBar}>
-            {/* 可拖拽磨砂滑块 */}
+            {/* 磨砂滑块（纯视觉指示，手势由外层处理） */}
             {tabBarWidth > 0 && (
               <Animated.View
                 style={[
@@ -211,18 +216,14 @@ export default function MainScreen({user, onLogout}: Props) {
                     transform: [{translateX: sliderTranslateX}],
                   },
                 ]}
-                {...panResponder.panHandlers}
               />
             )}
 
-            {/* 标签 */}
+            {/* 标签文字 */}
             {TAB_CONFIG.map(tab => {
               const isActive = activeTab === tab.key;
               return (
-                <Pressable
-                  key={tab.key}
-                  style={styles.tabItem}
-                  onPress={() => handleTabPress(tab.key)}>
+                <View key={tab.key} style={styles.tabItem}>
                   <Text
                     style={[
                       styles.tabLabel,
@@ -230,7 +231,7 @@ export default function MainScreen({user, onLogout}: Props) {
                     ]}>
                     {tab.label}
                   </Text>
-                </Pressable>
+                </View>
               );
             })}
           </LiquidGlassView>
@@ -247,13 +248,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingBottom: 80, // 给悬浮导航栏留空间
+    paddingBottom: 80,
   },
   bgImage: {
     flex: 1,
   },
 
-  /* ---------- 悬浮导航栏容器 ---------- */
+  /* ---------- 悬浮导航栏容器（响应手势） ---------- */
   tabBarArea: {
     position: 'absolute',
     left: 0,
@@ -322,10 +323,10 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: 'rgba(0,0,0,0.45)',
+    color: 'rgba(255,255,255,0.55)',
   },
   tabLabelActive: {
-    color: '#4A90D9',
+    color: '#fff',
     fontWeight: '700',
     fontSize: 14,
   },

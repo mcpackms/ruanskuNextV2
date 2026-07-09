@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- 允许访问 RTK API 服务器的明文 HTTP -->
+    <!-- 允许访问 RTK API 服务器和图片 CDN 的明文 HTTP -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">rtkapi.ruansky.net</domain>
         <domain includeSubdomains="false">rtkapi2.ruansky.net</domain>
+        <domain includeSubdomains="true">zsdown.com</domain>
+        <domain includeSubdomains="true">bbs-img.zsdown.com</domain>
     </domain-config>
 </network-security-config>

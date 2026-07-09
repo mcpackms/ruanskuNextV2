@@ -10,7 +10,6 @@ import {
   Dimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {BlurView} from '@sbaiahmed1/react-native-blur';
 
 import CommunityScreen from './CommunityScreen';
 import FamilyScreen from './FamilyScreen';
@@ -162,16 +161,11 @@ export default function MainScreen({user, onLogout}: Props) {
         <View style={styles.tabBarShadow}>
           <View style={styles.tabBarBackground} onLayout={handleContainerLayout}>
             <View style={styles.tabBarContent}>
-              {/* 毛玻璃背景 - 纯装饰，不处理触摸 */}
-              <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                <BlurView
-                  blurType="light"
-                  blurAmount={30}
-                  style={{flex: 1}}
-                >
-                  <View style={{flex: 1}} />
-                </BlurView>
-              </View>
+              {/* 半透明背景 */}
+              <View
+                style={[StyleSheet.absoluteFill, styles.barBackground]}
+                pointerEvents="none"
+              />
 
               {/* 触摸处理层 */}
               <View style={styles.tabBarTouchArea} {...panResponder.panHandlers}>
@@ -259,6 +253,12 @@ const styles = StyleSheet.create({
 
   /* 内容层 */
   tabBarContent: {
+    borderRadius: 28,
+  },
+
+  /* 半透明背景 */
+  barBackground: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 28,
   },
 

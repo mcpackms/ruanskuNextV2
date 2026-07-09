@@ -162,9 +162,8 @@ export default function MainScreen({user, onLogout}: Props) {
         <View style={styles.tabBarShadow}>
           <View style={styles.tabBarBackground} onLayout={handleContainerLayout}>
             <View style={styles.tabBarContent} {...panResponder.panHandlers}>
-              {/* 毛玻璃背景层 */}
               <BlurView blurType="light" blurAmount={30} style={styles.blurContainer}>
-                {/* 滑动指示器 */}
+                {/* 滑动指示器 (底层) */}
                 {containerWidth > 0 && (
                   <Animated.View
                     style={[
@@ -176,10 +175,8 @@ export default function MainScreen({user, onLogout}: Props) {
                     ]}
                   />
                 )}
-              </BlurView>
 
-              {/* 文字层 - 在滑块和毛玻璃之间 */}
-              <View style={styles.tabTextLayer}>
+                {/* 标签文字 (上层) */}
                 {TABS.map((tab) => (
                   <View key={tab.key} style={styles.tabItem}>
                     <Text
@@ -191,7 +188,7 @@ export default function MainScreen({user, onLogout}: Props) {
                     </Text>
                   </View>
                 ))}
-              </View>
+              </BlurView>
             </View>
           </View>
         </View>
@@ -282,17 +279,6 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
     }),
-  },
-
-  /* 文字层 - 在滑块和毛玻璃之间 */
-  tabTextLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
 
   /* 标签项 */

@@ -13,9 +13,9 @@ interface Props {
 
 type Tab = 'community' | 'profile';
 
-const TAB_CONFIG: {key: Tab; label: string; icon: string}[] = [
-  {key: 'community', label: '社区', icon: '🌐'},
-  {key: 'profile', label: '我的', icon: '👤'},
+const TAB_CONFIG: {key: Tab; label: string}[] = [
+  {key: 'community', label: '社区'},
+  {key: 'profile', label: '我的'},
 ];
 
 export default function MainScreen({user, onLogout}: Props) {
@@ -52,7 +52,6 @@ export default function MainScreen({user, onLogout}: Props) {
                 pressed && styles.tabItemPressed,
               ]}
               onPress={() => setActiveTab(tab.key)}>
-              <Text style={styles.tabIcon}>{tab.icon}</Text>
               <Text
                 style={[
                   styles.tabLabel,
@@ -92,10 +91,6 @@ const styles = StyleSheet.create({
   },
   tabItemPressed: {
     opacity: 0.7,
-  },
-  tabIcon: {
-    fontSize: 22,
-    marginBottom: 2,
   },
   tabLabel: {
     fontSize: 11,

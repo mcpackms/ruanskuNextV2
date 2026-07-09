@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
 
   /* 阴影层 */
   tabBarShadow: {
-    marginHorizontal: BAR_HORIZONTAL_MARGIN,
+    width: SCREEN_WIDTH - BAR_HORIZONTAL_MARGIN * 2,
     borderRadius: 28,
     backgroundColor: 'rgba(255,255,255,0.95)',
     ...Platform.select({
@@ -267,18 +267,19 @@ const styles = StyleSheet.create({
   blurContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 14,
     paddingHorizontal: SLIDER_PADDING,
     borderRadius: 28,
+    minHeight: 60,
   },
 
   /* 活跃指示器 */
   activeIndicator: {
     position: 'absolute',
     left: SLIDER_PADDING,
-    top: 6,
-    bottom: 6,
-    borderRadius: 22,
+    top: 8,
+    bottom: 8,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.5)',
     ...Platform.select({
       ios: {
@@ -298,19 +299,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     zIndex: 1,
   },
 
   /* 标签文字 */
   tabText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.55)',
   },
   tabTextActive: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
   },
 });

@@ -8,6 +8,7 @@ import {
   LayoutChangeEvent,
   Platform,
   Image,
+  Dimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {BlurView} from '@sbaiahmed1/react-native-blur';
@@ -25,19 +26,22 @@ interface Props {
 }
 
 type Tab = 'community' | 'family' | 'profile';
-const TABS: {key: Tab; label: string}[] = [
-  {key: 'community', label: '社区'},
-  {key: 'family', label: '家族'},
-  {key: 'profile', label: '我的'},
+
+const TABS: {key: Tab; label: string; icon: string}[] = [
+  {key: 'community', label: '社区', icon: '🏠'},
+  {key: 'family', label: '家族', icon: '👨‍👩‍👧'},
+  {key: 'profile', label: '我的', icon: '👤'},
 ];
+
 const TAB_COUNT = TABS.length;
-const BAR_H_MARGIN = 12;
-const SLIDER_H_MARGIN = 8;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const BAR_HORIZONTAL_MARGIN = 20;
+const SLIDER_PADDING = 10;
 
 export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('community');
-  const [barWidth, setBarWidth] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - BAR_HORIZONTAL_MARGIN * 2);
   const [bgUri, setBgUri] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -45,78 +49,91 @@ export default function MainScreen({user, onLogout}: Props) {
     loadBackgroundUri().then(setBgUri);
   }, []);
 
-  const segW = barWidth / TAB_COUNT;
-  const sliderW = Math.max(0, segW - SLIDER_H_MARGIN * 2);
+  const segmentWidth = containerWidth / TAB_COUNT;
+  const sliderWidth = segmentWidth - SLIDER_PADDING * 2;
 
-  // ---- 滑动动画 ----
-  const slideX = useRef(new Animated.Value(0)).current;
-  const slideVal = useRef(0);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const currentSlideValue = useRef(0);
+
   useEffect(() => {
-    const id = slideX.addListener(v => {
-      slideVal.current = v.value;
+    const listener = slideAnim.addListener(({value}) => {
+      currentSlideValue.current = value;
     });
-    return () => slideX.removeListener(id);
-  }, [slideX]);
+    return () => slideAnim.removeListener(listener);
+  }, [slideAnim]);
 
-  const segWRef = useRef(0);
+  const segmentWidthRef = useRef(segmentWidth);
   useEffect(() => {
-    segWRef.current = segW;
-  }, [segW]);
+    segmentWidthRef.current = segmentWidth;
+  }, [segmentWidth]);
 
-  const snap = useCallback(
-    (idx: number) => {
-      Animated.spring(slideX, {
-        toValue: idx * segWRef.current,
+  const animateToTab = useCallback(
+    (index: number) => {
+      Animated.spring(slideAnim, {
+        toValue: index * segmentWidthRef.current,
         useNativeDriver: true,
-        tension: 100,
+        tension: 80,
         friction: 12,
       }).start();
     },
-    [slideX],
+    [slideAnim],
   );
 
-  // ---- 手势（点击 + 拖拽） ----
-  const touchX = useRef(0);
+  const touchStartX = useRef(0);
 
-  const pan = useRef(
+  const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: e => {
-        touchX.current = e.nativeEvent.locationX;
+      onPanResponderGrant: (event) => {
+        touchStartX.current = event.nativeEvent.locationX;
       },
-      onPanResponderMove: (_, g) => {
-        const sw = segWRef.current || 1;
-        slideX.setValue(
-          Math.max(0, Math.min((TAB_COUNT - 1) * sw, slideVal.current + g.dx)),
+      onPanResponderMove: (_, gestureState) => {
+        const maxTranslate = (TAB_COUNT - 1) * segmentWidthRef.current;
+        const newValue = Math.max(
+          0,
+          Math.min(maxTranslate, currentSlideValue.current + gestureState.dx),
         );
+        slideAnim.setValue(newValue);
       },
-      onPanResponderRelease: (_, g) => {
-        const sw = segWRef.current || 1;
-        let idx: number;
-        if (Math.abs(g.dx) < 5 && Math.abs(g.dy) < 5) {
-          idx = Math.min(TAB_COUNT - 1, Math.max(0, Math.floor(touchX.current / sw)));
-        } else {
-          idx = Math.round(
-            Math.max(0, Math.min((TAB_COUNT - 1) * sw, slideVal.current + g.dx)) / sw,
+      onPanResponderRelease: (_, gestureState) => {
+        const sw = segmentWidthRef.current;
+        const isTap = Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
+
+        let targetIndex: number;
+        if (isTap) {
+          targetIndex = Math.floor(
+            Math.min(TAB_COUNT - 1, Math.max(0, touchStartX.current / sw)),
           );
+        } else {
+          const finalPosition = Math.max(
+            0,
+            Math.min(
+              (TAB_COUNT - 1) * sw,
+              currentSlideValue.current + gestureState.dx,
+            ),
+          );
+          targetIndex = Math.round(finalPosition / sw);
         }
-        setActiveTab(TABS[idx].key);
+
+        setActiveTab(TABS[targetIndex].key);
         setShowSettings(false);
-        snap(idx);
+        animateToTab(targetIndex);
       },
     }),
   ).current;
 
-  // ---- 布局 ----
-  const onLayout = useCallback((e: LayoutChangeEvent) => {
-    const {width} = e.nativeEvent.layout;
-    if (width > 0) setBarWidth(width);
+  const handleContainerLayout = useCallback((event: LayoutChangeEvent) => {
+    const {width} = event.nativeEvent.layout;
+    if (width > 0) {
+      setContainerWidth(width);
+    }
   }, []);
 
-  const renderScreen = () => {
+  const renderActiveScreen = () => {
     if (activeTab === 'community') return <CommunityScreen />;
     if (activeTab === 'family') return <FamilyScreen />;
+
     if (showSettings) {
       return (
         <SettingsScreen
@@ -125,6 +142,7 @@ export default function MainScreen({user, onLogout}: Props) {
         />
       );
     }
+
     return (
       <ProfileScreen
         user={user}
@@ -135,8 +153,8 @@ export default function MainScreen({user, onLogout}: Props) {
   };
 
   return (
-    <View style={[styles.root, !bgUri && styles.rootBg]}>
-      {/* 全屏背景图 */}
+    <View style={[styles.root, !bgUri && styles.rootBackground]}>
+      {/* 背景图层 */}
       {bgUri && (
         <Image
           source={{uri: bgUri}}
@@ -145,34 +163,48 @@ export default function MainScreen({user, onLogout}: Props) {
         />
       )}
 
-      {/* 内容区 */}
-      <View style={styles.content}>{renderScreen()}</View>
+      {/* 主内容区 */}
+      <View style={styles.mainContent}>
+        {renderActiveScreen()}
+      </View>
 
-      {/* 底部悬浮导航栏 */}
-      <View style={[styles.barArea, {paddingBottom: insets.bottom + 12}]}>
-        <View style={styles.barShadow} onLayout={onLayout}>
-          <View style={styles.barInner} {...pan.panHandlers}>
-            <BlurView blurType="light" blurAmount={24} style={styles.blur}>
-              {barWidth > 0 && (
-                <Animated.View
-                  style={[
-                    styles.slider,
-                    {width: sliderW, transform: [{translateX: slideX}]},
-                  ]}
-                />
-              )}
-              {TABS.map(t => (
-                <View key={t.key} style={styles.tabItem}>
-                  <Text
+      {/* 底部导航栏 */}
+      <View
+        style={[
+          styles.tabBarContainer,
+          {paddingBottom: Math.max(insets.bottom, 8) + 8},
+        ]}>
+        <View style={styles.tabBarShadow}>
+          <View style={styles.tabBarBackground} onLayout={handleContainerLayout}>
+            <View style={styles.tabBarContent} {...panResponder.panHandlers}>
+              <BlurView blurType="light" blurAmount={30} style={styles.blurContainer}>
+                {/* 滑动指示器 */}
+                {containerWidth > 0 && (
+                  <Animated.View
                     style={[
-                      styles.tabLabel,
-                      activeTab === t.key && styles.tabLabelActive,
-                    ]}>
-                    {t.label}
-                  </Text>
-                </View>
-              ))}
-            </BlurView>
+                      styles.activeIndicator,
+                      {
+                        width: sliderWidth,
+                        transform: [{translateX: slideAnim}],
+                      },
+                    ]}
+                  />
+                )}
+
+                {/* 标签项 */}
+                {TABS.map((tab) => (
+                  <View key={tab.key} style={styles.tabItem}>
+                    <Text
+                      style={[
+                        styles.tabText,
+                        activeTab === tab.key && styles.tabTextActive,
+                      ]}>
+                      {tab.label}
+                    </Text>
+                  </View>
+                ))}
+              </BlurView>
+            </View>
           </View>
         </View>
       </View>
@@ -184,76 +216,100 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  rootBg: {
-    backgroundColor: '#f5f5f5',
+  rootBackground: {
+    backgroundColor: '#F5F5F5',
   },
-  content: {
+  mainContent: {
     flex: 1,
-    paddingBottom: 80,
+    paddingBottom: 90,
     backgroundColor: 'transparent',
   },
 
-  /* ---- 导航栏 ---- */
-  barArea: {
+  /* 导航栏容器 */
+  tabBarContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     alignItems: 'center',
   },
-  barShadow: {
-    marginHorizontal: BAR_H_MARGIN,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+
+  /* 阴影层 */
+  tabBarShadow: {
+    marginHorizontal: BAR_HORIZONTAL_MARGIN,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 6},
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
+        shadowColor: '#000000',
+        shadowOffset: {width: 0, height: 8},
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
       },
       android: {
-        elevation: 12,
+        elevation: 16,
       },
     }),
   },
-  barInner: {
-    borderRadius: 28,
+
+  /* 背景层 */
+  tabBarBackground: {
+    borderRadius: 26,
     overflow: 'hidden',
   },
-  blur: {
+
+  /* 内容层 */
+  tabBarContent: {
+    borderRadius: 26,
+  },
+
+  /* 毛玻璃容器 */
+  blurContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: SLIDER_H_MARGIN,
-    borderRadius: 28,
+    paddingVertical: 6,
+    paddingHorizontal: SLIDER_PADDING,
+    borderRadius: 26,
   },
 
-  /* ---- 滑块 ---- */
-  slider: {
+  /* 活跃指示器 */
+  activeIndicator: {
     position: 'absolute',
-    left: SLIDER_H_MARGIN,
-    top: 4,
-    bottom: 4,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.45)',
+    left: SLIDER_PADDING,
+    top: 5,
+    bottom: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
 
-  /* ---- 标签 ---- */
+  /* 标签项 */
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     zIndex: 1,
   },
-  tabLabel: {
+
+  /* 标签文字 */
+  tabText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.55)',
   },
-  tabLabelActive: {
-    color: '#fff',
+  tabTextActive: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },

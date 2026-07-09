@@ -7,7 +7,7 @@ import {
   PanResponder,
   LayoutChangeEvent,
   Platform,
-  ImageBackground,
+  Image,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LiquidGlassView} from '@sbaiahmed1/react-native-blur';
@@ -50,7 +50,7 @@ export default function MainScreen({user, onLogout}: Props) {
   const sectionWidth = tabBarWidth / TAB_COUNT;
   const sliderWidth = tabBarWidth > 0 ? sectionWidth - SLIDER_H_MARGIN * 2 : 0;
 
-  // 动画值：滑块 translateX
+  // 动画值
   const sliderTranslateX = useRef(new Animated.Value(0)).current;
 
   // 追踪当前滑块位置
@@ -62,16 +62,16 @@ export default function MainScreen({user, onLogout}: Props) {
     return () => sliderTranslateX.removeListener(listener);
   }, [sliderTranslateX]);
 
-  // 用 ref 保存 sectionWidth
+  // ref 保存 sectionWidth
   const sectionWidthRef = useRef(0);
   useEffect(() => {
     sectionWidthRef.current = sectionWidth;
   }, [sectionWidth]);
 
-  // 触摸起始位置（用于区分点击/拖拽）
+  // 触摸起始位置
   const touchStartXRef = useRef(0);
 
-  // 拖拽+点击统一手势（放在整个导航栏上）
+  // 统一手势（拖拽+点击）
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -91,16 +91,12 @@ export default function MainScreen({user, onLogout}: Props) {
         sliderTranslateX.setValue(newValue);
       },
 
-      onPanResponderRelease: (evt, gesture) => {
+      onPanResponderRelease: (_, gesture) => {
         const sw = sectionWidthRef.current || 1;
-
-        // 判断是点击还是拖拽
         const isTap = Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5;
 
         let tabIndex: number;
-
         if (isTap) {
-          // 点击：根据触摸位置计算
           tabIndex = Math.floor(
             Math.min(
               TAB_COUNT - 1,
@@ -108,7 +104,6 @@ export default function MainScreen({user, onLogout}: Props) {
             ),
           );
         } else {
-          // 拖拽：根据滑块最终位置计算
           const finalX = Math.max(
             0,
             Math.min(
@@ -158,55 +153,54 @@ export default function MainScreen({user, onLogout}: Props) {
 
   const renderProfileContent = () => {
     if (showSettings) {
-      return (
-        <SettingsScreen
-          onBack={handleCloseSettings}
-          onBackgroundChange={handleBackgroundChange}
-        />
-      );
+      return <SettingsScreen onBack={handleCloseSettings} onBackgroundChange={handleBackgroundChange} />;
     }
-    return (
-      <ProfileScreen
-        user={user}
-        onLogout={handleLogout}
-        onOpenSettings={handleOpenSettings}
-      />
-    );
+    return <ProfileScreen user={user} onLogout={handleLogout} onOpenSettings={handleOpenSettings} />;
+  };
+
+  const renderActiveScreen = () => {
+    switch (activeTab) {
+      case 'community':
+        return <CommunityScreen />;
+      case 'family':
+        return <FamilyScreen />;
+      case 'profile':
+        return renderProfileContent();
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* 内容区域 */}
+      {/* ===== 内容区域 ===== */}
       <View style={styles.content}>
-        {bgUri ? (
-          <ImageBackground
+        {/* 底层：默认背景 */}
+        <View style={styles.contentBg} />
+
+        {/* 中层：自定义背景图 */}
+        {bgUri && (
+          <Image
             source={{uri: bgUri}}
-            style={styles.bgImage}
-            resizeMode="cover">
-            {activeTab === 'community' && <CommunityScreen />}
-            {activeTab === 'family' && <FamilyScreen />}
-            {activeTab === 'profile' && renderProfileContent()}
-          </ImageBackground>
-        ) : (
-          <>
-            {activeTab === 'community' && <CommunityScreen />}
-            {activeTab === 'family' && <FamilyScreen />}
-            {activeTab === 'profile' && renderProfileContent()}
-          </>
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
         )}
+
+        {/* 顶层：页面内容 */}
+        <View style={styles.screenContainer}>{renderActiveScreen()}</View>
       </View>
 
-      {/* ========== 底部悬浮凸玻璃导航栏 ========== */}
-      <View
-        style={[styles.tabBarArea, {paddingBottom: insets.bottom + 8}]}
-        {...panResponder.panHandlers}>
-        <View style={styles.tabBarFloat} onLayout={handleLayout}>
+      {/* ===== 底部悬浮凸玻璃导航栏 ===== */}
+      <View style={[styles.tabBarArea, {paddingBottom: insets.bottom + 8}]}>
+        <View
+          style={styles.tabBarFloat}
+          onLayout={handleLayout}
+          {...panResponder.panHandlers}>
           <LiquidGlassView
             glassType="regular"
             glassTintColor="#FFFFFF"
-            glassOpacity={0.8}
+            glassOpacity={0.75}
             style={styles.tabBar}>
-            {/* 磨砂滑块（纯视觉指示，手势由外层处理） */}
+            {/* 滑块 */}
             {tabBarWidth > 0 && (
               <Animated.View
                 style={[
@@ -219,7 +213,7 @@ export default function MainScreen({user, onLogout}: Props) {
               />
             )}
 
-            {/* 标签文字 */}
+            {/* 标签 */}
             {TAB_CONFIG.map(tab => {
               const isActive = activeTab === tab.key;
               return (
@@ -250,17 +244,27 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingBottom: 80,
   },
-  bgImage: {
+  contentBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#f5f5f5',
+  },
+  screenContainer: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
 
-  /* ---------- 悬浮导航栏容器（响应手势） ---------- */
+  /* ---------- 悬浮导航栏 ---------- */
   tabBarArea: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     alignItems: 'center',
+    pointerEvents: 'box-none',
   },
 
   /* ---------- 悬浮凸玻璃导航栏 ---------- */
@@ -272,16 +276,16 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.25,
         shadowRadius: 20,
       },
       android: {
-        elevation: 20,
+        elevation: 16,
       },
     }),
   },
 
-  /* ---------- 液态玻璃导航栏 ---------- */
+  /* ---------- 液态玻璃 ---------- */
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,25 +295,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
 
-  /* ---------- 滑块（磨砂效果） ---------- */
+  /* ---------- 滑块 ---------- */
   slider: {
     position: 'absolute',
     left: SLIDER_H_MARGIN,
     height: 36,
     top: 6,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 1},
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
 
   /* ---------- 标签 ---------- */

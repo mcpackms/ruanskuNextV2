@@ -7,6 +7,8 @@ import {
   Alert,
   ScrollView,
   Image,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {launchImageLibrary} from 'react-native-image-picker';
@@ -26,8 +28,46 @@ export default function SettingsScreen({onBack, onBackgroundChange}: Props) {
     loadBackgroundUri().then(setBgUri);
   }, []);
 
+  // 请求存储权限（Android 运行时权限）
+  const requestPermission = useCallback(async (): Promise<boolean> => {
+    if (Platform.OS !== 'android') return true;
+
+    try {
+      // Android 13+ (API 33)：细粒度媒体权限
+      const apiLevel = Platform.Version as number;
+      const permission =
+        apiLevel >= 33
+          ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+          : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+
+      const granted = await PermissionsAndroid.request(permission, {
+        title: '需要访问相册',
+        message: '选择背景图片需要访问您的相册',
+        buttonPositive: '允许',
+        buttonNegative: '拒绝',
+      });
+
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        Alert.alert(
+          '权限被拒绝',
+          '请在系统设置中手动授予「存储」或「照片和视频」权限',
+        );
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.warn('权限请求出错:', err);
+      return false;
+    }
+  }, []);
+
   // 从相册选择
   const handlePickFromGallery = useCallback(async () => {
+    // 先申请权限
+    const hasPermission = await requestPermission();
+    if (!hasPermission) return;
+
     const result = await launchImageLibrary({
       mediaType: 'photo',
       quality: 0.8,
@@ -47,7 +87,7 @@ export default function SettingsScreen({onBack, onBackgroundChange}: Props) {
       setBgUri(uri);
       onBackgroundChange(uri);
     }
-  }, [onBackgroundChange]);
+  }, [onBackgroundChange, requestPermission]);
 
   // 清除背景
   const handleClear = useCallback(() => {

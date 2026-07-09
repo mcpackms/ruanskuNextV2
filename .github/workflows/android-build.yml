@@ -50,9 +50,7 @@ jobs:
 
       - name: Generate signing keystore
         run: |
-          KEYSTORE_PASSWORD="$(openssl rand -base64 18)"
           KEY_PASSWORD="$(openssl rand -base64 18)"
-          echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
           echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
           keytool -genkey -v \
             -keystore android/app/release.keystore \
@@ -60,14 +58,13 @@ jobs:
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -storepass "$KEYSTORE_PASSWORD" \
-            -keypass "$KEY_PASSWORD" \
+            -storepass "$KEY_PASSWORD" \
             -dname "CN=CI Build, OU=Development, O=Ruansky, L=Unknown, ST=Unknown, C=US"
 
       - name: Build Android APK (Release)
         run: |
           cd android && ./gradlew assembleRelease \
-            -PRELEASE_STORE_PASSWORD="${{ env.KEYSTORE_PASSWORD }}" \
+            -PRELEASE_STORE_PASSWORD="${{ env.KEY_PASSWORD }}" \
             -PRELEASE_KEY_ALIAS=release \
             -PRELEASE_KEY_PASSWORD="${{ env.KEY_PASSWORD }}"
 

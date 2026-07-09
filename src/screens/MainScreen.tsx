@@ -13,6 +13,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {GlassEffectView} from 'react-native-glass-effect-view';
 
 import CommunityScreen from './CommunityScreen';
+import FamilyScreen from './FamilyScreen';
 import ProfileScreen from './ProfileScreen';
 import type {UserInfo} from '../types';
 
@@ -21,10 +22,11 @@ interface Props {
   onLogout: () => void;
 }
 
-type Tab = 'community' | 'profile';
+type Tab = 'community' | 'family' | 'profile';
 
 const TAB_CONFIG: {key: Tab; label: string}[] = [
   {key: 'community', label: '社区'},
+  {key: 'family', label: '家族'},
   {key: 'profile', label: '我的'},
 ];
 
@@ -138,7 +140,8 @@ export default function MainScreen({user, onLogout}: Props) {
       {/* 内容区域 */}
       <View style={styles.content}>
         {activeTab === 'community' && <CommunityScreen />}
-        {activeTab === 'profile' && (
+        {activeTab === 'family' && <FamilyScreen />}
+      {activeTab === 'profile' && (
           <ProfileScreen user={user} onLogout={handleLogout} />
         )}
       </View>

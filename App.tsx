@@ -7,7 +7,7 @@ import {StatusBar, StyleSheet, useColorScheme, View} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import LoginScreen from './src/screens/LoginScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
+import MainScreen from './src/screens/MainScreen';
 import type {UserInfo} from './src/types';
 
 function App(): React.JSX.Element {
@@ -27,7 +27,7 @@ function App(): React.JSX.Element {
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <View style={styles.container}>
         {user ? (
-          <ProfileScreen user={user} onLogout={handleLogout} />
+          <MainScreen user={user} onLogout={handleLogout} />
         ) : (
           <LoginScreen onLoginSuccess={handleLoginSuccess} />
         )}

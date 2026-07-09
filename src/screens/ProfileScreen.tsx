@@ -1,5 +1,13 @@
 import React, {useCallback} from 'react';
-import {View, Text, Pressable, StyleSheet, Alert, ScrollView} from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  Image,
+} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {UserInfo} from '../types';
 import {logout} from '../services/api';
@@ -7,9 +15,10 @@ import {logout} from '../services/api';
 interface Props {
   user: UserInfo;
   onLogout: () => void;
+  onOpenSettings: () => void;
 }
 
-export default function ProfileScreen({user, onLogout}: Props) {
+export default function ProfileScreen({user, onLogout, onOpenSettings}: Props) {
   const insets = useSafeAreaInsets();
 
   const handleLogout = useCallback(() => {
@@ -51,11 +60,15 @@ export default function ProfileScreen({user, onLogout}: Props) {
       ]}>
       {/* 头像 + 昵称卡片 */}
       <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user.nickname ? user.nickname.charAt(0).toUpperCase() : 'U'}
-          </Text>
-        </View>
+        {user.face ? (
+          <Image source={{uri: user.face}} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user.nickname ? user.nickname.charAt(0).toUpperCase() : 'U'}
+            </Text>
+          </View>
+        )}
         <Text style={styles.nickname}>{user.nickname}</Text>
         <View style={styles.levelBadge}>
           <Text style={styles.levelText}>Lv.{user.level}</Text>
@@ -77,6 +90,18 @@ export default function ProfileScreen({user, onLogout}: Props) {
           </View>
         ))}
       </View>
+
+      {/* 设置入口 */}
+      <Pressable
+        style={({pressed}) => [
+          styles.menuItem,
+          pressed && styles.menuItemPressed,
+        ]}
+        onPress={onOpenSettings}>
+        <Text style={styles.menuIcon}>⚙️</Text>
+        <Text style={styles.menuText}>设置</Text>
+        <Text style={styles.menuArrow}>›</Text>
+      </Pressable>
 
       {/* 退出按钮 */}
       <Pressable
@@ -146,7 +171,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.06,
@@ -179,6 +204,36 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     maxWidth: '60%',
     textAlign: 'right',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  menuItemPressed: {
+    opacity: 0.7,
+  },
+  menuIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#222',
+  },
+  menuArrow: {
+    fontSize: 22,
+    color: '#ccc',
   },
   logoutButton: {
     backgroundColor: '#fff',

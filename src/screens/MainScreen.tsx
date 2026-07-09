@@ -8,6 +8,7 @@ import {
   PanResponder,
   LayoutChangeEvent,
   Platform,
+  ImageBackground,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LiquidGlassView} from '@sbaiahmed1/react-native-blur';
@@ -15,7 +16,9 @@ import {LiquidGlassView} from '@sbaiahmed1/react-native-blur';
 import CommunityScreen from './CommunityScreen';
 import FamilyScreen from './FamilyScreen';
 import ProfileScreen from './ProfileScreen';
+import SettingsScreen from './SettingsScreen';
 import type {UserInfo} from '../types';
+import {loadBackgroundUri} from '../services/storage';
 
 interface Props {
   user: UserInfo;
@@ -37,6 +40,13 @@ export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('community');
   const [tabBarWidth, setTabBarWidth] = useState(0);
+  const [bgUri, setBgUri] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // 加载已保存的背景图
+  useEffect(() => {
+    loadBackgroundUri().then(setBgUri);
+  }, []);
 
   const sectionWidth = tabBarWidth / TAB_COUNT;
   const sliderWidth = tabBarWidth > 0 ? sectionWidth - SLIDER_H_MARGIN * 2 : 0;
@@ -102,6 +112,7 @@ export default function MainScreen({user, onLogout}: Props) {
   const switchToTab = useCallback(
     (tabKey: Tab) => {
       setActiveTab(tabKey);
+      setShowSettings(false); // 切换标签时关闭设置页
       const tabIndex = TAB_CONFIG.findIndex(t => t.key === tabKey);
       const sw = sectionWidthRef.current || 1;
       Animated.spring(sliderTranslateX, {
@@ -132,14 +143,53 @@ export default function MainScreen({user, onLogout}: Props) {
     [switchToTab],
   );
 
+  const handleOpenSettings = useCallback(() => {
+    setShowSettings(true);
+  }, []);
+
+  const handleCloseSettings = useCallback(() => {
+    setShowSettings(false);
+  }, []);
+
+  const handleBackgroundChange = useCallback((uri: string | null) => {
+    setBgUri(uri);
+  }, []);
+
+  // 渲染 "我的" 标签下的内容
+  const renderProfileContent = () => {
+    if (showSettings) {
+      return (
+        <SettingsScreen
+          onBack={handleCloseSettings}
+          onBackgroundChange={handleBackgroundChange}
+        />
+      );
+    }
+    return (
+      <ProfileScreen
+        user={user}
+        onLogout={handleLogout}
+        onOpenSettings={handleOpenSettings}
+      />
+    );
+  };
+
   return (
     <View style={styles.container}>
-      {/* 内容区域 */}
+      {/* 内容区域（带自定义背景） */}
       <View style={styles.content}>
-        {activeTab === 'community' && <CommunityScreen />}
-        {activeTab === 'family' && <FamilyScreen />}
-        {activeTab === 'profile' && (
-          <ProfileScreen user={user} onLogout={handleLogout} />
+        {bgUri ? (
+          <ImageBackground source={{uri: bgUri}} style={styles.bgImage} resizeMode="cover">
+            {activeTab === 'community' && <CommunityScreen />}
+            {activeTab === 'family' && <FamilyScreen />}
+            {activeTab === 'profile' && renderProfileContent()}
+          </ImageBackground>
+        ) : (
+          <>
+            {activeTab === 'community' && <CommunityScreen />}
+            {activeTab === 'family' && <FamilyScreen />}
+            {activeTab === 'profile' && renderProfileContent()}
+          </>
         )}
       </View>
 
@@ -150,44 +200,44 @@ export default function MainScreen({user, onLogout}: Props) {
           {paddingBottom: insets.bottom + 4},
         ]}>
         <View onLayout={handleLayout}>
-        <LiquidGlassView
-          glassType="regular"
-          glassTintColor="#FFFFFF"
-          glassOpacity={0.85}
-          style={styles.tabBar}>
-          {/* 可拖拽滑块 */}
-          {tabBarWidth > 0 && (
-            <Animated.View
-              style={[
-                styles.slider,
-                {
-                  width: sliderWidth,
-                  transform: [{translateX: sliderTranslateX}],
-                },
-              ]}
-              {...panResponder.panHandlers}
-            />
-          )}
+          <LiquidGlassView
+            glassType="regular"
+            glassTintColor="#FFFFFF"
+            glassOpacity={0.85}
+            style={styles.tabBar}>
+            {/* 可拖拽滑块 */}
+            {tabBarWidth > 0 && (
+              <Animated.View
+                style={[
+                  styles.slider,
+                  {
+                    width: sliderWidth,
+                    transform: [{translateX: sliderTranslateX}],
+                  },
+                ]}
+                {...panResponder.panHandlers}
+              />
+            )}
 
-          {/* 标签 */}
-          {TAB_CONFIG.map(tab => {
-            const isActive = activeTab === tab.key;
-            return (
-              <Pressable
-                key={tab.key}
-                style={styles.tabItem}
-                onPress={() => handleTabPress(tab.key)}>
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    isActive && styles.tabLabelActive,
-                  ]}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </LiquidGlassView>
+            {/* 标签 */}
+            {TAB_CONFIG.map(tab => {
+              const isActive = activeTab === tab.key;
+              return (
+                <Pressable
+                  key={tab.key}
+                  style={styles.tabItem}
+                  onPress={() => handleTabPress(tab.key)}>
+                  <Text
+                    style={[
+                      styles.tabLabel,
+                      isActive && styles.tabLabelActive,
+                    ]}>
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </LiquidGlassView>
         </View>
       </View>
     </View>
@@ -200,6 +250,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   content: {
+    flex: 1,
+  },
+  bgImage: {
     flex: 1,
   },
 
@@ -239,7 +292,6 @@ const styles = StyleSheet.create({
     top: 4,
     borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.92)',
-    // 滑块轻微凸起
     ...Platform.select({
       ios: {
         shadowColor: '#000',

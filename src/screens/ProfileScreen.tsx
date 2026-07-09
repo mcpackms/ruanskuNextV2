@@ -41,7 +41,6 @@ export default function ProfileScreen({user, onLogout, onOpenSettings}: Props) {
 
   const infoItems: {label: string; value: string}[] = [
     {label: 'UID', value: user.uid},
-    {label: '手机号', value: user.mobile},
     {label: '昵称', value: user.nickname},
     {label: '等级', value: user.level},
     {label: '签名', value: user.signature || '未设置'},

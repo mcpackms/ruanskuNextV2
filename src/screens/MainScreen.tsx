@@ -7,7 +7,6 @@ import {
   PanResponder,
   LayoutChangeEvent,
   Platform,
-  Image,
   Dimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -18,7 +17,6 @@ import FamilyScreen from './FamilyScreen';
 import ProfileScreen from './ProfileScreen';
 import SettingsScreen from './SettingsScreen';
 import type {UserInfo} from '../types';
-import {loadBackgroundUri} from '../services/storage';
 
 interface Props {
   user: UserInfo;
@@ -42,12 +40,7 @@ export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('community');
   const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - BAR_HORIZONTAL_MARGIN * 2);
-  const [bgUri, setBgUri] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-
-  useEffect(() => {
-    loadBackgroundUri().then(setBgUri);
-  }, []);
 
   const segmentWidth = containerWidth / TAB_COUNT;
   const sliderWidth = segmentWidth - SLIDER_PADDING * 2;
@@ -154,15 +147,7 @@ export default function MainScreen({user, onLogout}: Props) {
   };
 
   return (
-    <View style={[styles.root, !bgUri && styles.rootBackground]}>
-      {/* 背景图层 */}
-      {bgUri && (
-        <Image
-          source={{uri: bgUri}}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
-      )}
+    <View style={[styles.root, styles.rootBackground]}>
 
       {/* 主内容区 */}
       <View style={styles.mainContent}>
@@ -178,6 +163,7 @@ export default function MainScreen({user, onLogout}: Props) {
         <View style={styles.tabBarShadow}>
           <View style={styles.tabBarBackground} onLayout={handleContainerLayout}>
             <View style={styles.tabBarContent} {...panResponder.panHandlers}>
+              {/* 毛玻璃背景层 */}
               <BlurView blurType="light" blurAmount={30} style={styles.blurContainer}>
                 {/* 滑动指示器 */}
                 {containerWidth > 0 && (
@@ -191,8 +177,10 @@ export default function MainScreen({user, onLogout}: Props) {
                     ]}
                   />
                 )}
+              </BlurView>
 
-                {/* 标签项 */}
+              {/* 文字层 - 在滑块和毛玻璃之间 */}
+              <View style={styles.tabTextLayer}>
                 {TABS.map((tab) => (
                   <View key={tab.key} style={styles.tabItem}>
                     <Text
@@ -204,7 +192,7 @@ export default function MainScreen({user, onLogout}: Props) {
                     </Text>
                   </View>
                 ))}
-              </BlurView>
+              </View>
             </View>
           </View>
         </View>
@@ -239,12 +227,12 @@ const styles = StyleSheet.create({
   tabBarShadow: {
     width: SCREEN_WIDTH - BAR_HORIZONTAL_MARGIN * 2,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     ...Platform.select({
       ios: {
         shadowColor: '#000000',
         shadowOffset: {width: 0, height: 8},
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.08,
         shadowRadius: 20,
       },
       android: {
@@ -274,14 +262,16 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
 
-  /* 活跃指示器 */
+  /* 活跃指示器 - 透明+边框 */
   activeIndicator: {
     position: 'absolute',
     left: SLIDER_PADDING,
     top: 8,
     bottom: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
     ...Platform.select({
       ios: {
         shadowColor: '#000000',
@@ -293,6 +283,17 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
     }),
+  },
+
+  /* 文字层 - 在滑块和毛玻璃之间 */
+  tabTextLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   /* 标签项 */

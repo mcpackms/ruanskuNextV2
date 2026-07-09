@@ -120,9 +120,7 @@ export default function LoginScreen({onLoginSuccess}: Props) {
             )}
           </Pressable>
 
-          <Text style={styles.hint}>
-            请先确保 MCP Server 已启动 (localhost:3456)
-          </Text>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -216,11 +214,5 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     letterSpacing: 4,
-  },
-  hint: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#aaa',
-    marginTop: 24,
   },
 });

@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {LiquidGlassView} from '@sbaiahmed1/react-native-blur';
 
 import CommunityScreen from './CommunityScreen';
 import FamilyScreen from './FamilyScreen';
@@ -158,47 +159,43 @@ export default function MainScreen({user, onLogout}: Props) {
           styles.tabBarContainer,
           {paddingBottom: Math.max(insets.bottom, 8) + 8},
         ]}>
-        <View style={styles.tabBarShadow}>
-          <View style={styles.tabBarBackground} onLayout={handleContainerLayout}>
-            <View style={styles.tabBarContent}>
-              {/* 半透明背景 */}
-              <View
-                style={[StyleSheet.absoluteFill, styles.barBackground]}
-                pointerEvents="none"
+        <View
+          style={styles.tabBarFloat}
+          onLayout={handleContainerLayout}
+          {...panResponder.panHandlers}>
+          <LiquidGlassView
+            glassType="regular"
+            glassTintColor="#FFFFFF"
+            glassOpacity={0.08}
+            style={styles.tabBar}>
+            {/* 滑动指示器 */}
+            {containerWidth > 0 && (
+              <Animated.View
+                style={[
+                  styles.activeIndicator,
+                  {
+                    width: sliderWidth,
+                    transform: [{translateX: slideAnim}],
+                  },
+                ]}
               />
+            )}
 
-              {/* 触摸处理层 */}
-              <View style={styles.tabBarTouchArea} {...panResponder.panHandlers}>
-                {/* 滑动指示器 (最底层) */}
-                {containerWidth > 0 && (
-                  <Animated.View
+            {/* 标签文字 */}
+            <View style={styles.tabTextLayer}>
+              {TABS.map((tab) => (
+                <View key={tab.key} style={styles.tabItem}>
+                  <Text
                     style={[
-                      styles.activeIndicator,
-                      {
-                        width: sliderWidth,
-                        transform: [{translateX: slideAnim}],
-                      },
-                    ]}
-                  />
-                )}
-
-                {/* 标签文字 (上层) */}
-                <View style={styles.tabTextLayer}>
-                  {TABS.map((tab) => (
-                    <View key={tab.key} style={styles.tabItem}>
-                      <Text
-                        style={[
-                          styles.tabText,
-                          activeTab === tab.key && styles.tabTextActive,
-                        ]}>
-                        {tab.label}
-                      </Text>
-                    </View>
-                  ))}
+                      styles.tabText,
+                      activeTab === tab.key && styles.tabTextActive,
+                    ]}>
+                    {tab.label}
+                  </Text>
                 </View>
-              </View>
+              ))}
             </View>
-          </View>
+          </LiquidGlassView>
         </View>
       </View>
     </View>
@@ -218,7 +215,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 
-  /* 导航栏容器 */
+  /* ---------- 导航栏容器 ---------- */
   tabBarContainer: {
     position: 'absolute',
     left: 0,
@@ -227,47 +224,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  /* 阴影层 */
-  tabBarShadow: {
-    width: SCREEN_WIDTH - BAR_HORIZONTAL_MARGIN * 2,
+  /* ---------- 悬浮导航栏 ---------- */
+  tabBarFloat: {
+    marginHorizontal: 4,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    overflow: 'visible',
     ...Platform.select({
       ios: {
         shadowColor: '#000000',
         shadowOffset: {width: 0, height: 8},
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.15,
         shadowRadius: 20,
       },
       android: {
-        elevation: 14,
+        elevation: 16,
       },
     }),
   },
 
-  /* 背景层 */
-  tabBarBackground: {
-    borderRadius: 28,
-    overflow: 'hidden',
-  },
-
-  /* 内容层 */
-  tabBarContent: {
-    borderRadius: 28,
-  },
-
-  /* 半透明背景 */
-  barBackground: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 28,
-  },
-
-  /* 触摸处理层 */
-  tabBarTouchArea: {
+  /* ---------- 玻璃效果(毛玻璃) ---------- */
+  tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: SLIDER_PADDING,
+    borderRadius: 28,
     minHeight: 60,
   },
 

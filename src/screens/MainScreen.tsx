@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {LiquidGlassView} from '@sbaiahmed1/react-native-blur';
+import {BlurView} from '@sbaiahmed1/react-native-blur';
 
 import CommunityScreen from './CommunityScreen';
 import FamilyScreen from './FamilyScreen';
@@ -25,210 +25,155 @@ interface Props {
 }
 
 type Tab = 'community' | 'family' | 'profile';
-
-const TAB_CONFIG: {key: Tab; label: string}[] = [
+const TABS: {key: Tab; label: string}[] = [
   {key: 'community', label: '社区'},
   {key: 'family', label: '家族'},
   {key: 'profile', label: '我的'},
 ];
-
-const TAB_COUNT = TAB_CONFIG.length;
-const SLIDER_H_MARGIN = 14;
+const TAB_COUNT = TABS.length;
+const BAR_H_MARGIN = 16;
+const SLIDER_H_MARGIN = 6;
 
 export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('community');
-  const [tabBarWidth, setTabBarWidth] = useState(0);
+  const [barWidth, setBarWidth] = useState(0);
   const [bgUri, setBgUri] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
-  // 加载已保存的背景图
   useEffect(() => {
     loadBackgroundUri().then(setBgUri);
   }, []);
 
-  const sectionWidth = tabBarWidth / TAB_COUNT;
-  const sliderWidth = tabBarWidth > 0 ? sectionWidth - SLIDER_H_MARGIN * 2 : 0;
+  const segW = barWidth / TAB_COUNT;
+  const sliderW = Math.max(0, segW - SLIDER_H_MARGIN * 2);
 
-  // 动画值
-  const sliderTranslateX = useRef(new Animated.Value(0)).current;
-
-  // 追踪当前滑块位置
-  const sliderValueRef = useRef(0);
+  // ---- 滑动动画 ----
+  const slideX = useRef(new Animated.Value(0)).current;
+  const slideVal = useRef(0);
   useEffect(() => {
-    const listener = sliderTranslateX.addListener(({value}) => {
-      sliderValueRef.current = value;
+    const id = slideX.addListener(v => {
+      slideVal.current = v.value;
     });
-    return () => sliderTranslateX.removeListener(listener);
-  }, [sliderTranslateX]);
+    return () => slideX.removeListener(id);
+  }, [slideX]);
 
-  // ref 保存 sectionWidth
-  const sectionWidthRef = useRef(0);
+  const segWRef = useRef(0);
   useEffect(() => {
-    sectionWidthRef.current = sectionWidth;
-  }, [sectionWidth]);
+    segWRef.current = segW;
+  }, [segW]);
 
-  // 触摸起始位置
-  const touchStartXRef = useRef(0);
+  const snap = useCallback(
+    (idx: number) => {
+      Animated.spring(slideX, {
+        toValue: idx * segWRef.current,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 12,
+      }).start();
+    },
+    [slideX],
+  );
 
-  // 统一手势（拖拽+点击）
-  const panResponder = useRef(
+  // ---- 手势（点击 + 拖拽） ----
+  const touchX = useRef(0);
+
+  const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-
-      onPanResponderGrant: evt => {
-        touchStartXRef.current = evt.nativeEvent.locationX;
+      onPanResponderGrant: e => {
+        touchX.current = e.nativeEvent.locationX;
       },
-
-      onPanResponderMove: (_, gesture) => {
-        const sw = sectionWidthRef.current || 1;
-        const maxTranslate = (TAB_COUNT - 1) * sw;
-        const newValue = Math.max(
-          0,
-          Math.min(maxTranslate, sliderValueRef.current + gesture.dx),
+      onPanResponderMove: (_, g) => {
+        const sw = segWRef.current || 1;
+        slideX.setValue(
+          Math.max(0, Math.min((TAB_COUNT - 1) * sw, slideVal.current + g.dx)),
         );
-        sliderTranslateX.setValue(newValue);
       },
-
-      onPanResponderRelease: (_, gesture) => {
-        const sw = sectionWidthRef.current || 1;
-        const isTap = Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5;
-
-        let tabIndex: number;
-        if (isTap) {
-          tabIndex = Math.floor(
-            Math.min(
-              TAB_COUNT - 1,
-              Math.max(0, touchStartXRef.current / sw),
-            ),
-          );
+      onPanResponderRelease: (_, g) => {
+        const sw = segWRef.current || 1;
+        let idx: number;
+        if (Math.abs(g.dx) < 5 && Math.abs(g.dy) < 5) {
+          idx = Math.min(TAB_COUNT - 1, Math.max(0, Math.floor(touchX.current / sw)));
         } else {
-          const finalX = Math.max(
-            0,
-            Math.min(
-              (TAB_COUNT - 1) * sw,
-              sliderValueRef.current + gesture.dx,
-            ),
+          idx = Math.round(
+            Math.max(0, Math.min((TAB_COUNT - 1) * sw, slideVal.current + g.dx)) / sw,
           );
-          tabIndex = Math.round(finalX / sw);
         }
-
-        const targetTab = TAB_CONFIG[tabIndex].key;
-        setActiveTab(targetTab);
+        setActiveTab(TABS[idx].key);
         setShowSettings(false);
-
-        Animated.spring(sliderTranslateX, {
-          toValue: tabIndex * sw,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 12,
-        }).start();
+        snap(idx);
       },
     }),
   ).current;
 
-  const handleLogout = useCallback(() => {
-    onLogout();
-  }, [onLogout]);
-
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+  // ---- 布局 ----
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
     const {width} = e.nativeEvent.layout;
-    if (width > 0) {
-      setTabBarWidth(width);
-    }
+    if (width > 0) setBarWidth(width);
   }, []);
 
-  const handleOpenSettings = useCallback(() => {
-    setShowSettings(true);
-  }, []);
-
-  const handleCloseSettings = useCallback(() => {
-    setShowSettings(false);
-  }, []);
-
-  const handleBackgroundChange = useCallback((uri: string | null) => {
-    setBgUri(uri);
-  }, []);
-
-  const renderProfileContent = () => {
+  const renderScreen = () => {
+    if (activeTab === 'community') return <CommunityScreen />;
+    if (activeTab === 'family') return <FamilyScreen />;
     if (showSettings) {
-      return <SettingsScreen onBack={handleCloseSettings} onBackgroundChange={handleBackgroundChange} />;
+      return (
+        <SettingsScreen
+          onBack={() => setShowSettings(false)}
+          onBackgroundChange={setBgUri}
+        />
+      );
     }
-    return <ProfileScreen user={user} onLogout={handleLogout} onOpenSettings={handleOpenSettings} />;
-  };
-
-  const renderActiveScreen = () => {
-    switch (activeTab) {
-      case 'community':
-        return <CommunityScreen />;
-      case 'family':
-        return <FamilyScreen />;
-      case 'profile':
-        return renderProfileContent();
-    }
+    return (
+      <ProfileScreen
+        user={user}
+        onLogout={onLogout}
+        onOpenSettings={() => setShowSettings(true)}
+      />
+    );
   };
 
   return (
-    <View style={styles.container}>
-      {/* ===== 内容区域 ===== */}
-      <View style={styles.content}>
-        {/* 底层：默认背景 */}
-        <View style={styles.contentBg} />
+    <View style={[styles.root, !bgUri && styles.rootBg]}>
+      {/* 全屏背景图 */}
+      {bgUri && (
+        <Image
+          source={{uri: bgUri}}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+      )}
 
-        {/* 中层：自定义背景图 */}
-        {bgUri && (
-          <Image
-            source={{uri: bgUri}}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-        )}
+      {/* 内容区 */}
+      <View style={styles.content}>{renderScreen()}</View>
 
-        {/* 顶层：页面内容 */}
-        <View style={styles.screenContainer}>{renderActiveScreen()}</View>
-      </View>
-
-      {/* ===== 底部悬浮凸玻璃导航栏 ===== */}
-      <View style={[styles.tabBarArea, {paddingBottom: insets.bottom + 8}]}>
-        <View
-          style={styles.tabBarFloat}
-          onLayout={handleLayout}
-          {...panResponder.panHandlers}>
-          <LiquidGlassView
-            glassType="regular"
-            glassTintColor="#FFFFFF"
-            glassOpacity={0.75}
-            style={styles.tabBar}>
-            {/* 滑块 */}
-            {tabBarWidth > 0 && (
-              <Animated.View
-                style={[
-                  styles.slider,
-                  {
-                    width: sliderWidth,
-                    transform: [{translateX: sliderTranslateX}],
-                  },
-                ]}
-              />
-            )}
-
-            {/* 标签 */}
-            {TAB_CONFIG.map(tab => {
-              const isActive = activeTab === tab.key;
-              return (
-                <View key={tab.key} style={styles.tabItem}>
+      {/* 底部悬浮导航栏 */}
+      <View style={[styles.barArea, {paddingBottom: insets.bottom + 6}]}>
+        <View style={styles.barShadow}>
+          <View style={styles.barInner} onLayout={onLayout} {...pan.panHandlers}>
+            <BlurView blurType="light" blurAmount={32} style={styles.blur}>
+              {barWidth > 0 && (
+                <Animated.View
+                  style={[
+                    styles.slider,
+                    {width: sliderW, transform: [{translateX: slideX}]},
+                  ]}
+                />
+              )}
+              {TABS.map(t => (
+                <View key={t.key} style={styles.tabItem}>
                   <Text
                     style={[
                       styles.tabLabel,
-                      isActive && styles.tabLabelActive,
+                      activeTab === t.key && styles.tabLabelActive,
                     ]}>
-                    {tab.label}
+                    {t.label}
                   </Text>
                 </View>
-              );
-            })}
-          </LiquidGlassView>
+              ))}
+            </BlurView>
+          </View>
         </View>
       </View>
     </View>
@@ -236,76 +181,65 @@ export default function MainScreen({user, onLogout}: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
+  },
+  rootBg: {
     backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
     paddingBottom: 80,
-  },
-  contentBg: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: '#f5f5f5',
-  },
-  screenContainer: {
-    flex: 1,
     backgroundColor: 'transparent',
   },
 
-  /* ---------- 悬浮导航栏 ---------- */
-  tabBarArea: {
+  /* ---- 导航栏 ---- */
+  barArea: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     alignItems: 'center',
-    pointerEvents: 'box-none',
   },
-
-  /* ---------- 悬浮凸玻璃导航栏 ---------- */
-  tabBarFloat: {
-    marginHorizontal: 16,
-    borderRadius: 24,
-    overflow: 'visible',
+  barShadow: {
+    marginHorizontal: BAR_H_MARGIN,
+    borderRadius: 28,
+    backgroundColor: '#fff',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.25,
-        shadowRadius: 20,
+        shadowOffset: {width: 0, height: 6},
+        shadowOpacity: 0.2,
+        shadowRadius: 24,
       },
       android: {
         elevation: 16,
       },
     }),
   },
-
-  /* ---------- 液态玻璃 ---------- */
-  tabBar: {
+  barInner: {
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  blur: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 8,
     paddingVertical: 4,
     paddingHorizontal: SLIDER_H_MARGIN,
-    borderRadius: 24,
+    borderRadius: 28,
   },
 
-  /* ---------- 滑块 ---------- */
+  /* ---- 滑块 ---- */
   slider: {
     position: 'absolute',
     left: SLIDER_H_MARGIN,
-    height: 36,
-    top: 6,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    top: 4,
+    bottom: 4,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.45)',
   },
 
-  /* ---------- 标签 ---------- */
+  /* ---- 标签 ---- */
   tabItem: {
     flex: 1,
     alignItems: 'center',
@@ -315,12 +249,12 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
   },
   tabLabelActive: {
     color: '#fff',
-    fontWeight: '700',
     fontSize: 14,
+    fontWeight: '700',
   },
 });

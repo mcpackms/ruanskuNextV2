@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {GlassEffectView} from 'react-native-glass-effect-view';
+import {LiquidGlassView} from '@sbaiahmed1/react-native-blur';
 
 import CommunityScreen from './CommunityScreen';
 import FamilyScreen from './FamilyScreen';
@@ -31,7 +31,7 @@ const TAB_CONFIG: {key: Tab; label: string}[] = [
 ];
 
 const TAB_COUNT = TAB_CONFIG.length;
-const SLIDER_H_MARGIN = 14; // 滑块左右留白
+const SLIDER_H_MARGIN = 14;
 
 export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
@@ -64,9 +64,7 @@ export default function MainScreen({user, onLogout}: Props) {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        // 开始拖拽时记录的起始位置由 sliderValueRef 提供
-      },
+      onPanResponderGrant: () => {},
       onPanResponderMove: (_, gesture) => {
         const sw = sectionWidthRef.current || 1;
         const maxTranslate = (TAB_COUNT - 1) * sw;
@@ -90,7 +88,6 @@ export default function MainScreen({user, onLogout}: Props) {
 
         setActiveTab(targetTab);
 
-        // 弹性回弹到目标位置
         Animated.spring(sliderTranslateX, {
           toValue: tabIndex * sw,
           useNativeDriver: true,
@@ -141,50 +138,58 @@ export default function MainScreen({user, onLogout}: Props) {
       <View style={styles.content}>
         {activeTab === 'community' && <CommunityScreen />}
         {activeTab === 'family' && <FamilyScreen />}
-      {activeTab === 'profile' && (
+        {activeTab === 'profile' && (
           <ProfileScreen user={user} onLogout={handleLogout} />
         )}
       </View>
 
       {/* ========== 底部凸玻璃导航栏 ========== */}
-      <GlassEffectView
-        appearance="light"
-        tintColor="rgba(255,255,255,0.7)"
-        style={[styles.tabBar, {paddingBottom: insets.bottom + 4}]}
-        onLayout={handleLayout}>
-        {/* 可拖拽滑块 */}
-        {tabBarWidth > 0 && (
-          <Animated.View
-            style={[
-              styles.slider,
-              {
-                width: sliderWidth,
-                transform: [{translateX: sliderTranslateX}],
-              },
-            ]}
-            {...panResponder.panHandlers}
-          />
-        )}
+      <View
+        style={[
+          styles.tabBarWrapper,
+          {paddingBottom: insets.bottom + 4},
+        ]}>
+        <View onLayout={handleLayout}>
+        <LiquidGlassView
+          glassType="regular"
+          glassTintColor="#FFFFFF"
+          glassOpacity={0.85}
+          style={styles.tabBar}>
+          {/* 可拖拽滑块 */}
+          {tabBarWidth > 0 && (
+            <Animated.View
+              style={[
+                styles.slider,
+                {
+                  width: sliderWidth,
+                  transform: [{translateX: sliderTranslateX}],
+                },
+              ]}
+              {...panResponder.panHandlers}
+            />
+          )}
 
-        {/* 标签 */}
-        {TAB_CONFIG.map(tab => {
-          const isActive = activeTab === tab.key;
-          return (
-            <Pressable
-              key={tab.key}
-              style={styles.tabItem}
-              onPress={() => handleTabPress(tab.key)}>
-              <Text
-                style={[
-                  styles.tabLabel,
-                  isActive && styles.tabLabelActive,
-                ]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </GlassEffectView>
+          {/* 标签 */}
+          {TAB_CONFIG.map(tab => {
+            const isActive = activeTab === tab.key;
+            return (
+              <Pressable
+                key={tab.key}
+                style={styles.tabItem}
+                onPress={() => handleTabPress(tab.key)}>
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    isActive && styles.tabLabelActive,
+                  ]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </LiquidGlassView>
+        </View>
+      </View>
     </View>
   );
 }
@@ -198,38 +203,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  /* ---------- 凸玻璃导航栏 ---------- */
+  /* ---------- 凸玻璃容器（阴影层） ---------- */
+  tabBarWrapper: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'visible',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: -4},
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 16,
+      },
+    }),
+  },
+
+  /* ---------- 液态玻璃导航栏 ---------- */
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 8,
     paddingHorizontal: SLIDER_H_MARGIN,
-    // 凸玻璃效果：圆角 + 阴影
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: -3},
-        shadowOpacity: 0.12,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
   },
 
   /* ---------- 滑块 ---------- */
   slider: {
     position: 'absolute',
-    // left: 动态设置 = SLIDER_H_MARGIN + 0(初始)
     left: SLIDER_H_MARGIN,
     height: 34,
     top: 4,
     borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    // 滑块自身也有轻微凸起
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    // 滑块轻微凸起
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -249,7 +259,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    zIndex: 1, // 确保文字在滑块上方
+    zIndex: 1,
   },
   tabLabel: {
     fontSize: 13,

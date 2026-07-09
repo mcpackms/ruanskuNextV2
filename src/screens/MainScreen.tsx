@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   Animated,
-  PanResponder,
+  Pressable,
   LayoutChangeEvent,
   Platform,
   Dimensions,
@@ -25,115 +25,62 @@ interface Props {
 
 type Tab = 'community' | 'family' | 'profile';
 
-const TABS: {key: Tab; label: string; icon: string}[] = [
-  {key: 'community', label: '社区', icon: '🏠'},
-  {key: 'family', label: '家族', icon: '👨‍👩‍👧'},
-  {key: 'profile', label: '我的', icon: '👤'},
+const TABS: {key: Tab; label: string}[] = [
+  {key: 'community', label: '社区'},
+  {key: 'family', label: '家族'},
+  {key: 'profile', label: '我的'},
 ];
 
 const TAB_COUNT = TABS.length;
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const BAR_HORIZONTAL_MARGIN = 4;
 const SLIDER_PADDING = 14;
 
 export default function MainScreen({user, onLogout}: Props) {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<Tab>('community');
-  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - BAR_HORIZONTAL_MARGIN * 2);
   const [showSettings, setShowSettings] = useState(false);
-
-  const segmentWidth = containerWidth / TAB_COUNT;
-  const sliderWidth = segmentWidth - SLIDER_PADDING * 2;
+  const [barWidth, setBarWidth] = useState(0);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const currentSlideValue = useRef(0);
+  const segWRef = useRef(0);
 
-  useEffect(() => {
-    const listener = slideAnim.addListener(({value}) => {
-      currentSlideValue.current = value;
-    });
-    return () => slideAnim.removeListener(listener);
-  }, [slideAnim]);
+  const segmentWidth = barWidth > 0 ? barWidth / TAB_COUNT : 0;
+  const sliderWidth = segmentWidth > SLIDER_PADDING * 2 ? segmentWidth - SLIDER_PADDING * 2 : 0;
 
-  const segmentWidthRef = useRef(segmentWidth);
-  useEffect(() => {
-    segmentWidthRef.current = segmentWidth;
-  }, [segmentWidth]);
-
-  const animateToTab = useCallback(
-    (index: number) => {
-      Animated.spring(slideAnim, {
-        toValue: index * segmentWidthRef.current,
-        useNativeDriver: true,
-        tension: 25,
-        friction: 20,
-        mass: 1.5,
-      }).start();
-    },
-    [slideAnim],
-  );
-
-  const touchStartX = useRef(0);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (event) => {
-        touchStartX.current = event.nativeEvent.locationX;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const maxTranslate = (TAB_COUNT - 1) * segmentWidthRef.current;
-        const newValue = Math.max(
-          0,
-          Math.min(maxTranslate, currentSlideValue.current + gestureState.dx),
-        );
-        slideAnim.setValue(newValue);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const sw = segmentWidthRef.current;
-        const isTap = Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
-
-        let targetIndex: number;
-        if (isTap) {
-          targetIndex = Math.floor(
-            Math.min(TAB_COUNT - 1, Math.max(0, touchStartX.current / sw)),
-          );
-        } else {
-          const finalPosition = Math.max(
-            0,
-            Math.min(
-              (TAB_COUNT - 1) * sw,
-              currentSlideValue.current + gestureState.dx,
-            ),
-          );
-          targetIndex = Math.round(finalPosition / sw);
-        }
-
-        setActiveTab(TABS[targetIndex].key);
-        setShowSettings(false);
-        animateToTab(targetIndex);
-      },
-    }),
-  ).current;
-
-  const handleContainerLayout = useCallback((event: LayoutChangeEvent) => {
-    const {width} = event.nativeEvent.layout;
-    if (width > 0) {
-      setContainerWidth(width);
+  // 测量导航栏宽度
+  const handleBarLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    if (w > 0) {
+      setBarWidth(w);
+      segWRef.current = w / TAB_COUNT;
     }
   }, []);
 
-  const renderActiveScreen = () => {
+  // 切换标签
+  const handleTabPress = useCallback((tab: Tab) => {
+    setShowSettings(false);
+    setActiveTab(tab);
+  }, []);
+
+  // 滑块动画
+  useEffect(() => {
+    const idx = TABS.findIndex(t => t.key === activeTab);
+    if (idx < 0 || segWRef.current <= 0) return;
+    Animated.spring(slideAnim, {
+      toValue: idx * segWRef.current,
+      useNativeDriver: true,
+      tension: 25,
+      friction: 20,
+      mass: 1.5,
+    }).start();
+  }, [activeTab, slideAnim]);
+
+  const renderScreen = () => {
     if (activeTab === 'community') return <CommunityScreen />;
     if (activeTab === 'family') return <FamilyScreen />;
 
     if (showSettings) {
-      return (
-        <SettingsScreen
-          onBack={() => setShowSettings(false)}
-        />
-      );
+      return <SettingsScreen onBack={() => setShowSettings(false)} />;
     }
 
     return (
@@ -146,33 +93,28 @@ export default function MainScreen({user, onLogout}: Props) {
   };
 
   return (
-    <View style={[styles.root, styles.rootBackground]}>
+    <View style={styles.root}>
+      <View style={styles.mainContent}>{renderScreen()}</View>
 
-      {/* 主内容区 */}
-      <View style={styles.mainContent}>
-        {renderActiveScreen()}
-      </View>
-
-      {/* 底部导航栏 */}
+      {/* 导航栏 */}
       <View
         style={[
-          styles.tabBarContainer,
+          styles.barPosition,
           {paddingBottom: Math.max(insets.bottom, 8) + 8},
         ]}>
         <View
-          style={styles.tabBarFloat}
-          onLayout={handleContainerLayout}
-          {...panResponder.panHandlers}>
+          style={styles.barOuter}
+          onLayout={handleBarLayout}>
           <LiquidGlassView
             glassType="regular"
             glassTintColor="#FFFFFF"
             glassOpacity={0.08}
-            style={styles.tabBar}>
-            {/* 滑动指示器 */}
-            {containerWidth > 0 && (
+            style={styles.glass}>
+            {/* 滑块 */}
+            {barWidth > 0 && sliderWidth > 0 && (
               <Animated.View
                 style={[
-                  styles.activeIndicator,
+                  styles.slider,
                   {
                     width: sliderWidth,
                     transform: [{translateX: slideAnim}],
@@ -181,20 +123,21 @@ export default function MainScreen({user, onLogout}: Props) {
               />
             )}
 
-            {/* 标签文字 */}
-            <View style={styles.tabTextLayer}>
-              {TABS.map((tab) => (
-                <View key={tab.key} style={styles.tabItem}>
+            {/* 标签 */}
+            {TABS.map(tab => {
+              const isActive = activeTab === tab.key;
+              return (
+                <Pressable
+                  key={tab.key}
+                  style={styles.tabItem}
+                  onPress={() => handleTabPress(tab.key)}>
                   <Text
-                    style={[
-                      styles.tabText,
-                      activeTab === tab.key && styles.tabTextActive,
-                    ]}>
+                    style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
                     {tab.label}
                   </Text>
-                </View>
-              ))}
-            </View>
+                </Pressable>
+              );
+            })}
           </LiquidGlassView>
         </View>
       </View>
@@ -205,8 +148,6 @@ export default function MainScreen({user, onLogout}: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  rootBackground: {
     backgroundColor: '#F5F5F5',
   },
   mainContent: {
@@ -215,8 +156,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 
-  /* ---------- 导航栏容器 ---------- */
-  tabBarContainer: {
+  /* 导航栏定位 */
+  barPosition: {
     position: 'absolute',
     left: 0,
     right: 0,
@@ -224,9 +165,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  /* ---------- 悬浮导航栏 ---------- */
-  tabBarFloat: {
-    marginHorizontal: 4,
+  /* 外层容器 */
+  barOuter: {
+    width: SCREEN_WIDTH - 8,
     borderRadius: 28,
     overflow: 'visible',
     ...Platform.select({
@@ -242,8 +183,8 @@ const styles = StyleSheet.create({
     }),
   },
 
-  /* ---------- 玻璃效果(毛玻璃) ---------- */
-  tabBar: {
+  /* 毛玻璃 */
+  glass: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
@@ -252,15 +193,8 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
 
-  /* 文字层容器 */
-  tabTextLayer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  /* 活跃指示器 - 透明+边框 */
-  activeIndicator: {
+  /* 滑块 - 透明+边框 */
+  slider: {
     position: 'absolute',
     left: SLIDER_PADDING,
     top: 8,
@@ -292,12 +226,12 @@ const styles = StyleSheet.create({
   },
 
   /* 标签文字 */
-  tabText: {
+  tabLabel: {
     fontSize: 16,
     fontWeight: '500',
     color: 'rgba(0,0,0,0.45)',
   },
-  tabTextActive: {
+  tabLabelActive: {
     color: '#000000',
     fontSize: 17,
     fontWeight: '700',
